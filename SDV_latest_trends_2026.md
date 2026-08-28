@@ -579,3 +579,454 @@ AI
 です。
 
 このあたりを理解すると、現在のSDVの全体像がかなり見えやすくなります。
+
+---
+
+# SDV化に成功した自動車ベンダー
+
+2026年時点では、SDV化に「かなり成功している」と評価しやすいベンダーと、まだ移行途上のベンダーが分かれてきています。
+
+代表例は、
+
+- Tesla
+- Rivian
+- Mercedes-Benz
+- BMW
+- NIO / XPeng などの中国系EVメーカー
+
+です。
+
+一方でVolkswagenは、非常に重要な「苦戦と再構築」の事例です。
+
+---
+
+## ベンダー別のSDV成熟度
+
+| ベンダー | SDV化の成熟度 | 特徴 |
+|---|---:|---|
+| Tesla | ★★★★★ | Central Compute、OTA、垂直統合 |
+| Rivian | ★★★★★ | Zonal Architecture、自社Software Stack |
+| Mercedes-Benz | ★★★★☆ | MB.OS、中央コンピュータ化 |
+| BMW | ★★★★☆ | Neue Klasse、4 Superbrains + Zonal |
+| NIO / XPeng | ★★★★☆ | OTA、中央Compute、短いSW開発サイクル |
+| Volkswagen | ★★☆☆☆ → ★★★☆☆ | CARIADで苦戦後、Rivian型へ再構築 |
+
+---
+
+## 1. Tesla：最も明確な成功例
+
+TeslaはSDVの先駆者といえます。
+
+特徴は、
+
+```text
+Vehicle Hardware
+       ↓
+Central Computing
+       ↓
+Tesla Software Platform
+       ↓
+Cloud
+       ↓
+OTA
+```
+
+という構造をかなり早い段階から成立させたことです。
+
+重要なのはOTAだけではありません。
+
+Teslaは、
+
+- Vehicle Hardware
+- E/E Architecture
+- Software
+- Cloud
+- OTA
+
+を強く垂直統合しています。
+
+従来型OEMでは、
+
+```text
+ECU Supplier
+OS Vendor
+Middleware Vendor
+Cloud Vendor
+OEM
+```
+
+と複数の企業が関わりますが、Teslaはそれらの多くを自社主導で統合しています。
+
+これがSDV化で非常に強かった理由の1つです。
+
+---
+
+## 2. Rivian：Zonal Architectureの代表例
+
+Rivianは、SDVアーキテクチャを学ぶうえで非常に重要なベンダーです。
+
+Rivianの車両では、
+
+- Zonal Network Architecture
+- 自社Software Stack
+- Cloud連携
+- OTA
+- 車両制御
+- ADAS
+
+を統合しています。
+
+概念的には、
+
+```text
+       Central Compute
+       /           \
+   Zone ECU       Zone ECU
+      |              |
+   Sensors        Actuators
+```
+
+という構成です。
+
+特に象徴的なのが、
+
+> VolkswagenがRivianのArchitecture / Software Stackを取り込む方向へ動いた
+
+ことです。
+
+大手OEMが新興EVメーカーのSDVアーキテクチャを導入するという点で、非常に重要な事例です。
+
+---
+
+## 3. Mercedes-Benz：MB.OSによるSDV化
+
+Mercedes-Benzは、
+
+**MB.OS**
+
+を中心にSDV化を進めています。
+
+構造としては、
+
+```text
+Applications
+     ↓
+MB.OS
+     ↓
+Central Compute
+     ↓
+Vehicle Hardware
+```
+
+という方向です。
+
+Mercedesの特徴は、すべてを自社開発するのではなく、
+
+- NVIDIA
+- Google
+- Microsoft
+- Qualcomm
+
+などと連携しながら、
+
+**Vehicle ArchitectureとSoftware Platformの主導権をOEM側に残す**
+
+方針を取っていることです。
+
+Teslaの完全垂直統合とは異なる、既存OEM型のSDVアプローチです。
+
+---
+
+## 4. BMW：Neue Klasseで本格SDVへ
+
+BMWはNeue KlasseでSDV化を大きく進めています。
+
+特徴的なのが、
+
+```text
+4 Superbrains
++
+4 Zones
+```
+
+という考え方です。
+
+High Performance Computerが主に、
+
+- Infotainment
+- Automated Driving
+- Driving Dynamics
+- Body / Comfort
+
+を担当します。
+
+Zonal Architectureと組み合わせることで、
+
+- ECU統合
+- 配線削減
+- Hardware / Software開発の分離
+- Software Update
+- 世代をまたぐSoftware再利用
+
+を実現しやすくしています。
+
+概念的には、
+
+```text
+           Cloud
+             |
+       4 Superbrains
+      /   /   \   \
+    Zone Zone Zone Zone
+```
+
+という構成です。
+
+BMWは、
+
+> SDVを単一モデルだけでなく、将来の車種全体へ展開する
+
+方向に進んでいます。
+
+---
+
+## 5. Volkswagen：失敗から学ぶSDV
+
+Volkswagenは「成功例」というより、
+
+**SDV化の難しさを示す非常に重要な事例**
+
+です。
+
+当初はCARIADを中心に、ソフトウェアの大規模な内製化を進めました。
+
+しかしVW Groupは、
+
+```text
+VW Group
+ ├ VW
+ ├ Audi
+ ├ Porsche
+ ├ Skoda
+ └ ...
+```
+
+と多数のブランドを抱えています。
+
+そのため、
+
+- 異なるE/E Architecture
+- 異なるECU
+- 異なるSoftware Platform
+- 異なるSupplier
+- 異なる開発組織
+
+を統合する必要があり、Software Platform統合が非常に複雑になりました。
+
+その後、
+
+```text
+VW
+ ↓
+Rivian + VW
+ ↓
+Zonal Architecture
+ ↓
+Central Compute
+ ↓
+Common Software Platform
+```
+
+という方向へ再構築しています。
+
+この事例は、
+
+> SDV化は単なるSoftware開発ではなく、OrganizationとArchitectureの変革である
+
+ことをよく示しています。
+
+---
+
+# なぜTesla / RivianはSDV化しやすかったのか
+
+TeslaやRivianのような新興ベンダーは、
+
+```text
+Software Architecture
+        ↓
+E/E Architecture
+        ↓
+Vehicle
+```
+
+という順番で設計できます。
+
+一方、従来OEMは、
+
+```text
+既存ECU
+既存Supplier
+既存CAN
+既存Platform
+既存Organization
+       ↓
+SDV化
+```
+
+という移行になります。
+
+つまり最大の違いは、
+
+**Legacy**
+
+です。
+
+従来OEMでは、技術だけでなく、
+
+- 組織
+- 開発プロセス
+- Supplier構造
+- 製品世代
+- 品質保証
+- Safety Process
+
+まで変える必要があります。
+
+---
+
+# SDVはOrganization Architectureでもある
+
+SDVは単なる車載Software技術ではありません。
+
+組織構造もSoftware Architectureに大きく影響します。
+
+これは、
+
+**Conway's Law**
+
+とも密接に関係しています。
+
+```text
+Organization Structure
+        ↓
+Communication Structure
+        ↓
+Software Architecture
+```
+
+つまり、
+
+> 分散した組織からは分散したSoftware Architectureが生まれやすい
+
+ということです。
+
+SDV化では、Central Compute化だけでなく、
+
+**Software組織そのもののCentralization / Platform化**
+
+も必要になります。
+
+---
+
+# SDVベンダーを世代で見る
+
+SDVの進化をベンダー別に分類すると、次のように整理できます。
+
+```text
+第1世代
+Tesla
+  ↓
+最初からSoftware Companyとして車を設計
+
+第2世代
+Rivian / NIO / XPeng
+  ↓
+Zonal + OTA + Cloud-native前提
+
+第3世代
+Mercedes-Benz / BMW
+  ↓
+既存OEMが本格的SDVへ移行
+
+第4世代
+Volkswagen / Toyota / GMなど
+  ↓
+巨大なLegacyを抱えながら移行
+```
+
+---
+
+# SDV成功例を見るときのポイント
+
+SDV化の成功を評価するときは、単にOTAができるかを見るだけでは不十分です。
+
+重要なのは、
+
+1. **Central Compute化**
+2. **Zonal Architecture**
+3. **Hardware / Software Separation**
+4. **Service-Oriented Architecture**
+5. **OTA**
+6. **Cloud連携**
+7. **Software Platform共通化**
+8. **CI/CD**
+9. **Virtual ECU / Simulation**
+10. **Software組織の統合**
+
+です。
+
+その意味では、
+
+- Tesla：SDV完成形を見る
+- Rivian：Zonal Architectureを見る
+- BMW：既存OEMのSDV移行を見る
+- Mercedes-Benz：OEM主導Platformを見る
+- Volkswagen：SDV移行の難しさを見る
+
+という見方をすると、非常に理解しやすくなります。
+
+---
+
+# まとめ
+
+2026年時点でSDV化に最も成功している代表的な企業は、
+
+```text
+Tesla
+Rivian
+Mercedes-Benz
+BMW
+```
+
+と考えられます。
+
+ただしSDVに「唯一の正解」はありません。
+
+Teslaのような垂直統合型もあれば、
+
+Mercedes-BenzやBMWのように、
+
+```text
+OEM
++
+OS Vendor
++
+SoC Vendor
++
+Cloud Vendor
++
+Middleware Vendor
+```
+
+を組み合わせながらSoftware Platformを構築する方法もあります。
+
+今後の自動車産業では、
+
+> 「車を作る会社」
+
+から、
+
+> **「車両Software Platformを持つ会社」**
+
+へ進化できるかどうかが、SDV時代の競争力を大きく左右すると考えられます。
+
