@@ -479,6 +479,10 @@ ssh root@192.168.1.50
 
 BSP の設定によっては `root` ではなく別ユーザーを使用する場合があります。
 
+* User/Password
+  * qnxuser/qnxuser
+  * ログイン後 su - でパスワードroot でroot になれる
+
 ---
 
 ## 10.3 scp で実行ファイルをコピーする
