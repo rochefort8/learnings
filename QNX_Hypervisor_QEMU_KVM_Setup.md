@@ -690,3 +690,297 @@ Ubuntu Linux
                         |
                         +-- QNX Guest
 ```
+
+---
+
+# Appendix A: VMX / SVM / KVM の整理
+
+## VMX とは
+
+VMX は Intel CPU のハードウェア仮想化機能です。
+
+一般には Intel VT-x と呼ばれる機能群の一部で、QNX Hypervisor から見ると Intel CPU 上では VMX を使って Guest VM を実行します。
+
+Linux Host 側では以下で確認できます。
+
+```bash
+grep -m1 'vmx' /proc/cpuinfo
+```
+
+`vmx` が表示されれば、Intel のハードウェア仮想化機能が CPU から公開されています。
+
+QNX Hypervisor 8.x の Intel x86-64 環境では、Hypervisor 実体として基本的に以下を使用します。
+
+```text
+qvm-vmx
+```
+
+構成イメージ：
+
+```text
+Intel CPU
+   |
+   +-- VT-x / VMX
+          |
+          v
+       Linux KVM
+          |
+          v
+        QEMU
+          |
+          v
+QNX Hypervisor Host
+          |
+          +-- qvm-vmx
+                 |
+                 v
+              Guest OS
+```
+
+## SVM とは
+
+SVM は AMD CPU のハードウェア仮想化機能です。一般には AMD-V と呼ばれます。
+
+Intel の VMX とほぼ同じ役割です。
+
+| CPU Vendor | Hardware Virtualization | QNX Hypervisor |
+|---|---|---|
+| Intel | VMX / VT-x | `qvm-vmx` |
+| AMD | SVM / AMD-V | `qvm-svm` |
+
+Linux Host 側では AMD CPU の場合、以下で確認できます。
+
+```bash
+grep -m1 'svm' /proc/cpuinfo
+```
+
+今回使用した PC は Intel CPU で `vmx` が確認できているため、使用すべきものは `qvm-vmx` です。`qvm-svm` は AMD CPU 向けです。
+
+## KVM とは
+
+KVM は **Kernel-based Virtual Machine** の略で、Linux カーネルに含まれるハードウェア仮想化機能です。
+
+QEMU は CPU をソフトウェアだけでエミュレーションすることもできますが、KVM を有効にすると、Intel VMX や AMD SVM といった物理 CPU の仮想化支援機能を利用できます。
+
+今回の QEMU 起動では以下を使用しました。
+
+```bash
+--enable-kvm
+-cpu host
+```
+
+意味は次の通りです。
+
+```text
+--enable-kvm
+    QEMU から Linux KVM を利用する
+
+-cpu host
+    物理 CPU の CPU feature を QEMU Guest 側へ公開する
+```
+
+今回 QNX Hypervisor を QEMU の中で動かしているため、構成は Nested Virtualization になります。
+
+```text
+Physical Intel CPU
+        |
+        +-- VMX / EPT
+        |
+Ubuntu Linux
+        |
+        +-- KVM
+        |
+        +-- QEMU
+               |
+               +-- QNX Hypervisor Host
+                        |
+                        +-- qvm-vmx
+                               |
+                               +-- QNX Guest
+```
+
+Nested Virtualization が有効かどうかは、Intel CPU の場合以下で確認できます。
+
+```bash
+cat /sys/module/kvm_intel/parameters/nested
+```
+
+期待値：
+
+```text
+Y
+```
+
+## `qvm-check` で SVM Features が表示された場合
+
+今回、最初に `mkqnximage --run` で QEMU を起動した際は、QEMU が `--cpu max` を使用していました。
+
+その状態で QNX Host 上から、
+
+```sh
+qvm-check
+```
+
+を実行すると、
+
+```text
+SVM Features
+...
+Some required features are not implemented by the hardware.
+```
+
+となりました。
+
+物理 CPU は Intel であるにもかかわらず SVM が表示されたため、QEMU の generic CPU model が QNX 側に公開されていたことが分かります。
+
+対策として QEMU を、
+
+```bash
+--enable-kvm
+-cpu host
+```
+
+で起動しました。
+
+その結果、
+
+```sh
+qvm-check
+```
+
+は、
+
+```text
+CPU supports hypervisor operation
+```
+
+となり、QNX Hypervisor が必要とする CPU virtualization feature のチェックを通過しました。
+
+---
+
+# Appendix B: Ubuntu Host から QNX Hypervisor Host へ SSH 接続する
+
+## 目的
+
+QEMU のシリアルコンソールを Guest OS 用に使いながら、QNX Hypervisor Host を Ubuntu から SSH で管理できるようにします。
+
+```text
+Ubuntu Host
+   |
+   | SSH
+   v
+QNX Hypervisor Host
+   |
+   +-- qvm-vmx
+          |
+          v
+       QNX Guest
+```
+
+## QEMU user networking と port forwarding を使う
+
+今回の Ubuntu Host では `br0` が存在していましたが `state DOWN` だったため、単純な SSH 用途では QEMU user networking と port forwarding を使う方法が扱いやすいです。
+
+QEMU のネットワーク指定を以下にします。
+
+```bash
+-netdev user,id=net0,hostfwd=tcp:127.0.0.1:2222-:22 \
+-device virtio-net-pci,netdev=net0,mac=52:54:00:db:51:63 \
+```
+
+QEMU の起動例：
+
+```bash
+sudo qemu-system-x86_64 \
+  --enable-kvm \
+  -cpu host \
+  -smp 2 \
+  -m 1G \
+  -drive file=output/disk-qemu.vmdk,if=ide,id=drv0 \
+  -netdev user,id=net0,hostfwd=tcp:127.0.0.1:2222-:22 \
+  -device virtio-net-pci,netdev=net0,mac=52:54:00:db:51:63 \
+  -pidfile output/qemu.pid \
+  -nographic \
+  -kernel output/ifs.bin \
+  -serial mon:stdio \
+  -object rng-random,filename=/dev/urandom,id=rng0 \
+  -device virtio-rng-pci,rng=rng0
+```
+
+この設定は、
+
+```text
+Ubuntu 127.0.0.1:2222
+        |
+        | TCP port forwarding
+        v
+QEMU user network
+        |
+        | TCP/22
+        v
+QNX Hypervisor Host
+```
+
+という意味です。
+
+## Ubuntu から SSH 接続する
+
+Ubuntu 側から以下を実行します。
+
+```bash
+ssh -p 2222 root@127.0.0.1
+```
+
+ポート番号は `:` ではなく `-p` で指定します。
+
+誤り：
+
+```bash
+ssh 127.0.0.1:2222
+```
+
+正しい指定：
+
+```bash
+ssh -p 2222 root@127.0.0.1
+```
+
+## QNX 側で sshd を確認する
+
+SSH 接続が拒否される場合は、QNX Hypervisor Host 側で sshd が動作しているか確認します。
+
+```sh
+pidin | grep sshd
+```
+
+sshd が起動していなければ、インストールされている QNX イメージの sshd の場所と設定を確認して起動します。
+
+## Host / Guest のコンソールを分ける
+
+SSH が使えるようになると、次のように役割を分けられます。
+
+```text
+QEMU serial console
+        |
+        +-- Guest QNX 操作用
+
+Ubuntu terminal + SSH
+        |
+        +-- QNX Hypervisor Host 管理用
+```
+
+Host 側の確認：
+
+```sh
+grep virtualization /proc/config
+pidin | grep qvm
+qvm-check
+```
+
+Guest 起動：
+
+```sh
+/data/hypervisor/start_guest
+```
+
+この構成にすると、Guest のコンソールを使用中でも Host 側から `qvm-vmx` の状態、ネットワーク、Guest process などを確認できます。
