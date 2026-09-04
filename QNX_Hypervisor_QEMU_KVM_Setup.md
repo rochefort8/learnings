@@ -984,3 +984,250 @@ Guest 起動：
 ```
 
 この構成にすると、Guest のコンソールを使用中でも Host 側から `qvm-vmx` の状態、ネットワーク、Guest process などを確認できます。
+
+---
+
+# Appendix C: `guest.conf` の主要設定
+
+`guest.conf` は、QNX Hypervisor 上で起動する Guest VM の仮想ハードウェア構成を定義するファイルです。
+
+## VM 名
+
+```text
+system mkqnximage-guest
+```
+
+Guest VM の識別名です。Host 側では、この名前が `/dev/qvm/...` のパス生成にも使われます。
+
+## メモリ
+
+```text
+ram 0xa0000
+rom 0xc0000,0x40000
+ram 512M
+```
+
+x86 互換の低位メモリ領域、ROM 領域、Guest 用メイン RAM を定義します。主 RAM は `ram 1024M` のように変更できます。
+
+## vCPU
+
+```text
+cpu
+cpu
+```
+
+`cpu` 1 行につき 1 vCPU です。上記は 2 vCPU 構成です。
+
+## Guest IFS
+
+```text
+load /data/hypervisor/guest/ifs.bin
+```
+
+QNX Guest の IFS をロードします。
+
+## 主な virtual device
+
+```text
+vdev ioapic
+vdev ser8250
+vdev virtio-console
+vdev timer8254
+vdev mc146818
+vdev shmem
+vdev pckeyboard
+vdev virtio-net
+vdev virtio-blk
+vdev 8259
+vdev hpet
+vdev wdt-ib700
+```
+
+- `ioapic`: 割り込みルーティング
+- `ser8250`: 互換 UART。初期 boot log 用
+- `virtio-console`: 高速な para-virtualized console
+- `timer8254`: 互換 timer
+- `mc146818`: RTC
+- `shmem`: 共有メモリ
+- `pckeyboard`: PC keyboard controller
+- `virtio-net`: Guest NIC
+- `virtio-blk`: Guest block device
+- `8259`: legacy PIC
+- `hpet`: High Precision Event Timer
+- `wdt-ib700`: watchdog timer
+
+## VirtIO Block
+
+Guest 定義:
+
+```text
+vdev virtio-blk
+        hostdev /dev/qvmdisk0
+        name virtio-blk_qvmdisk0
+```
+
+Host 側では `start_guest` 内で:
+
+```sh
+devb-loopback loopback blksz=512,prefix=qvmdisk,fd=/data/hypervisor/guest/disk-qvm
+```
+
+により `/data/hypervisor/guest/disk-qvm` を `/dev/qvmdisk0` として公開し、それを VirtIO block device として Guest に渡します。
+
+---
+
+# Appendix D: Guest `/data` が Read-only になる問題
+
+Guest 起動時に以下のエラーが発生しました。
+
+```text
+random: Unable to write seed file /data/var/random/rnd-seed: Input/output error
+random: Could not initialize seed - Input/output error
+Unable to access /dev/random
+```
+
+調査すると、
+
+```sh
+echo test > /data/test.txt
+```
+
+が、
+
+```text
+Read-only file system
+```
+
+となりました。mount 状態は:
+
+```text
+ifs on / type ifs
+/dev/hd0t179 on /data type qnx6
+/dev/hd0t178 on /system type qnx6
+/dev/hd0t177 on /boot type qnx6
+/dev/shmem on /dev/shmem type shmem
+```
+
+`/data` は QNX6 filesystem ですが read-only でマウントされていました。
+
+## 対策
+
+Guest の boot 時 mount 設定を、
+
+```sh
+mount -t qnx6 /dev/hd0t179 /data
+```
+
+から、
+
+```sh
+mount -t qnx6 -o sync=optional /dev/hd0t179 /data
+```
+
+へ変更しました。
+
+Ubuntu 上で mount 定義を探すには:
+
+```bash
+cd ~/projects/qnx/guest
+grep -R "/data" output/build output/option_files output/inc
+```
+
+修正後:
+
+```bash
+mkqnximage --build
+```
+
+で Guest image を再生成します。これにより `/data` へ書き込み可能になり、`random` の seed 初期化エラーも解消しました。
+
+---
+
+# Appendix E: `virtio-net` で Host ↔ Guest 通信
+
+Host 側の `start_guest` では:
+
+```sh
+ifconfig vp0 create 192.168.10.1/24 up
+vpctl vp0 peer=/dev/qvm/mkqnximage-guest/network bind=/dev/vdevpeers/vp0
+```
+
+Guest 側の `guest.conf` は:
+
+```text
+vdev virtio-net
+        name network
+        peerfeats 0x0382
+        peer /dev/vdevpeers/vp0
+```
+
+構成:
+
+```text
+QNX Hypervisor Host
+   vp0 : 192.168.10.1
+       |
+       | vdevpeer / virtio-net
+       |
+QNX Guest
+   vtnet0 : 192.168.10.2
+```
+
+Guest 側で IPv4 address を設定します。
+
+```sh
+ifconfig vtnet0 192.168.10.2 netmask 255.255.255.0 up
+```
+
+Guest → Host:
+
+```sh
+ping 192.168.10.1
+```
+
+Host → Guest:
+
+```sh
+ping 192.168.10.2
+```
+
+双方向 ping が通れば、Host ↔ Guest 間の VirtIO network は正常です。
+
+---
+
+# 現在までに確認できた構成
+
+```text
+Physical Intel CPU
+   |
+   +-- VMX / EPT
+   |
+Ubuntu Linux
+   |
+   +-- KVM
+   |
+   +-- QEMU
+          |
+          +-- QNX Hypervisor Host
+                 |
+                 +-- qvm-vmx
+                 +-- vp0 : 192.168.10.1
+                 |
+                 +-- QNX Guest
+                        +-- vtnet0 : 192.168.10.2
+                        +-- /data writable
+```
+
+確認済み:
+
+```text
+QNX Hypervisor Host 起動        OK
+Nested Virtualization           OK
+qvm-check                       OK
+QNX Guest 起動                  OK
+qvm-vmx                         OK
+Guest /data writable            OK
+random service 初期化問題解消   OK
+virtio-net Host ↔ Guest ping    OK
+```
+
