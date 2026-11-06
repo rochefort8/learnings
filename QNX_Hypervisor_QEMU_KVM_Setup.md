@@ -30,18 +30,11 @@ QNX Hypervisor Host
 まず、CPU がハードウェア仮想化に対応していることを確認します。
 
 ```bash
-grep -m1 'vmx|svm' /proc/cpuinfo
+$ lscpu | grep -i virtualization
+Virtualization:                          VT-x
 ```
 
 Intel CPU の場合は `vmx` が見えれば VT-x 対応です。
-
-今回の環境では以下も確認できました。
-
-- `vmx`
-- `ept`
-- `vpid`
-
-これらが存在していれば、Intel VT-x / Extended Page Tables を利用できる可能性が高いです。
 
 ---
 
