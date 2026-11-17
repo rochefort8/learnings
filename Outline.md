@@ -224,18 +224,14 @@ MCUとの違いも踏まえ、Cortex-A上の車載ソフトウェアを設計す
 * [Fault tolerance and reliability](https://qnx.com/developers/docs/qnxeverywhere/com.qnx.doc.qpg/topic/linux-qnx_Fault_tolerance.html)
 
 ## Page 14/15
-### Linuxとの遅延比較
-* 既存の測定結果を使い、遅延の比較グラフ2つを説明する
-* 比較結果は、測定資料に記載されたOSのバージョン・設定、ハードウェア、負荷、測定区間・試験時間を前提に説明する
+### 図
+* 遅延の比較結果のグラフ２つ
+* Linux との比較
+* RT Linux の取り組みを話してもいいかも
+* Linux はプリエンプションできない区間が大きく、そこがRT実現の足かせになってる
 
-### 付記：Linuxのリアルタイム対応
-* Linuxにも、PREEMPT_RTによって非プリエンプト区間を減らし、応答の遅延を抑える取り組みがあることに触れる
-* 「Linuxはプリエンプションできない区間が大きい」と一括りにせず、既存の測定で使ったカーネル構成に即して説明する
-* 測定対象がPREEMPT_RTを有効にした構成かどうかを資料で確認し、比較対象を明示する
-
-### 図・参考資料
-* 既存の遅延比較グラフ2つと、その測定条件・出典
-* [Linux公式：PREEMPT_RTの仕組み（Theory of operation）](https://cdn.kernel.org/doc/html/latest/core-api/real-time/theory.html)
+### 図
+* その事実の記事の引用
 
 ## ここまでで、リアルタイム性と、機能安全・セキュリティを支える設計上の特徴の一部を説明
 
