@@ -1,0 +1,91 @@
+--- rpi5.build	2026-10-31 04:05:30.000000000 +0900
++++ rpi5-qt-graghics.build	2026-11-24 14:10:14.617423683 +0900
+@@ -9,7 +9,7 @@
+ [image=0x80000]
+ [virtual=aarch64le,raw -compress] boot = {
+     startup-bcm2712-rpi5 -v -u reg -a -W 5000 
+-    [module=gicv2] PATH=/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/usr/libexec LD_LIBRARY_PATH=/proc/boot:/lib:/usr/lib:/lib/dll:/lib/dll/pci procnto-smp-instr -v
++    [module=gicv2] PATH=/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/usr/libexec LD_LIBRARY_PATH=/proc/boot:/lib:/usr/lib:/lib/dll:/lib/dll/pci:/usr/lib/graphics/drm-rpi5 procnto-smp-instr -v
+ }
+ 
+ [+script] startup-script = {
+@@ -51,6 +51,18 @@
+     ksh /proc/boot/pci_server_start.sh
+ 
+ 
++    ############################################################################################
++    ## Raspberry Pi 5 graphics and Screen
++    ############################################################################################
++    display_msg "Starting Raspberry Pi 5 DRM server ..."
++    drm-rpi5
++    waitfor /dev/dri/card0
++
++    display_msg "Starting Screen ..."
++    screen -c /usr/lib/graphics/drm-rpi5/graphics.conf &
++    waitfor /dev/screen
++
++
+     #######################################################################
+     ## Debug console serial driver
+     #######################################################################
+@@ -141,6 +153,52 @@
+ 
+ 
+ ################################################################################################
++## Screen and Raspberry Pi 5 graphics drivers
++################################################################################################
++/sbin/screen=${QNX_TARGET}/aarch64le/sbin/screen
++/sbin/drm-rpi5=${QNX_TARGET}/aarch64le/sbin/drm-rpi5
++/usr/bin/gles2-gears=${QNX_TARGET}/aarch64le/usr/bin/gles2-gears
++/usr/bin/gles2-gears-offscreen=${QNX_TARGET}/aarch64le/usr/bin/gles2-gears-offscreen
++/usr/bin/gles2-maze=${QNX_TARGET}/aarch64le/usr/bin/gles2-maze
++/usr/bin/gles2-teapot=${QNX_TARGET}/aarch64le/usr/bin/gles2-teapot
++/usr/bin/gles3-gears=${QNX_TARGET}/aarch64le/usr/bin/gles3-gears
++
++/lib/libsecpol.so.1=${QNX_TARGET}/aarch64le/lib/libsecpol.so.1
++/lib/libslog2.so.1=${QNX_TARGET}/aarch64le/lib/libslog2.so.1
++/lib/libscrmem.so.1=${QNX_TARGET}/aarch64le/lib/libscrmem.so.1
++/lib/libmemobj.so.1=${QNX_TARGET}/aarch64le/lib/libmemobj.so.1
++/lib/libpci.so.3.0=${QNX_TARGET}/aarch64le/lib/libpci.so.3.0
++/lib/libm.so.3=${QNX_TARGET}/aarch64le/lib/libm.so.3
++/lib/libc++.so.2=${QNX_TARGET}/aarch64le/usr/lib/libc++.so.2.0
++
++/lib/libscreen.so.1=${QNX_TARGET}/aarch64le/usr/lib/libscreen.so.1
++/lib/libWFD.so.1=${QNX_TARGET}/aarch64le/usr/lib/libWFD.so.1
++/lib/libEGL.so.1=${QNX_TARGET}/aarch64le/usr/lib/libEGL.so.1
++/lib/libGLESv2.so.1=${QNX_TARGET}/aarch64le/usr/lib/libGLESv2.so.1
++/lib/libswblit.so.1=${QNX_TARGET}/aarch64le/usr/lib/libswblit.so.1
++[type=link] /lib/libswblit.so=libswblit.so.1
++/lib/libdrm.so.2=${QNX_TARGET}/aarch64le/usr/lib/libdrm.so.2
++/lib/libgbm.so.1=${QNX_TARGET}/aarch64le/usr/lib/libgbm.so.1
++/usr/lib/dri_gbm.so=${QNX_TARGET}/aarch64le/usr/lib/dri_gbm.so
++
++/lib/dll/screen-debug.so=${QNX_TARGET}/aarch64le/lib/dll/screen-debug.so
++/lib/dll/screen-gles2blt.so=${QNX_TARGET}/aarch64le/lib/dll/screen-gles2blt.so
++/lib/dll/screen-sw.so=${QNX_TARGET}/aarch64le/lib/dll/screen-sw.so
++/lib/dll/screen-stdbuf.so=${QNX_TARGET}/aarch64le/lib/dll/screen-stdbuf.so
++
++/usr/lib/graphics/drm-rpi5/graphics.conf=${QNX_TARGET}/aarch64le/usr/lib/graphics/drm-rpi5/graphics-rpi5-hdmi1.conf
++/usr/lib/graphics/drm-rpi5/EGL-mesa.so=${QNX_TARGET}/aarch64le/usr/lib/graphics/drm-rpi5/EGL-mesa.so
++/usr/lib/graphics/drm-rpi5/GLESv2-mesa.so=${QNX_TARGET}/aarch64le/usr/lib/graphics/drm-rpi5/GLESv2-mesa.so
++/usr/lib/graphics/drm-rpi5/v3d_dri.so=${QNX_TARGET}/aarch64le/usr/lib/graphics/drm-rpi5/v3d_dri.so
++/usr/lib/graphics/drm-rpi5/gpu_rpi5.so=${QNX_TARGET}/aarch64le/usr/lib/graphics/drm-rpi5/gpu_rpi5.so
++/usr/lib/graphics/drm-rpi5/libWFDrpi5.so=${QNX_TARGET}/aarch64le/usr/lib/graphics/drm-rpi5/libWFDrpi5.so
++/usr/lib/graphics/drm-rpi5/libwfdcfg-rpi5.so=${QNX_TARGET}/aarch64le/usr/lib/graphics/drm-rpi5/libwfdcfg-rpi5.so
++/usr/lib/graphics/drm-rpi5/screen-alloc-rpi5.so=${QNX_TARGET}/aarch64le/usr/lib/graphics/drm-rpi5/screen-alloc-rpi5.so
++/usr/lib/graphics/drm-rpi5/vulkan_broadcom.so=${QNX_TARGET}/aarch64le/usr/lib/graphics/drm-rpi5/vulkan_broadcom.so
++/usr/lib/graphics/drm-rpi5/broadcom_icd.json=${QNX_TARGET}/aarch64le/usr/lib/graphics/drm-rpi5/broadcom_icd.json
++
++
++################################################################################################
+ ## NOR flash driver files
+ ################################################################################################
+ /sbin/devf-ram=devf-ram
+@@ -720,6 +778,7 @@ export SYSNAME=nto
+ export TERM=qansi
+ export PATH=/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/usr/libexec
+ export LD_LIBRARY_PATH=/proc/boot:/lib:/usr/lib:/lib/dll:/lib/dll/pci
++export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/graphics/drm-rpi5
+ 
+ export PCI_HW_MODULE=/lib/dll/pci/pci_hw-bcm2712-rpi5.so
+ export PCI_DEBUG_MODULE=/lib/dll/pci/pci_debug2.so
